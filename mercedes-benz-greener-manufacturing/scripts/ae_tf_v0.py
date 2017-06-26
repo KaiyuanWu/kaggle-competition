@@ -59,73 +59,6 @@ class DataIter():
                 self.cur_index_ = 0
                 raise StopIteration()
 
-
-def ae_model(input_dim, pred_loss_weight=0.9, rec_loss_weight=0.1):
-    data = tf.placeholder(tf.float32, [None, input_dim])
-    label = tf.placeholder(tf.float32, [None, 1])
-    weight = tf.placeholder(tf.float32, [None, 1])
-    phase = tf.placeholder(tf.bool)
-    encoder_fc1 = tf.contrib.layers.fully_connected(inputs=data, num_outputs=input_dim, normalizer_fn=tf.nn.relu,
-                                                    weights_initializer = tf.random_normal_initializer(mean = 0,  stddev=0.05),
-                                                    biases_initializer = tf.constant_initializer(0))
-    encoder_bn1 = tf.contrib.layers.batch_norm(inputs=encoder_fc1, decay=0.9, center=True, scale=True,
-                                               is_training=phase)
-    encoder_fc2 = tf.contrib.layers.fully_connected(inputs=encoder_bn1, num_outputs=int(1.3 * input_dim),
-                                                    normalizer_fn=tf.nn.relu,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-    encoder_bn2 = tf.contrib.layers.batch_norm(inputs=encoder_fc2, decay=0.9, center=True, scale=True,
-                                               is_training=phase)
-    encoder_fc3 = tf.contrib.layers.fully_connected(inputs=encoder_bn2, num_outputs=int(input_dim / 16),
-                                                    normalizer_fn=tf.nn.relu,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-    encoder_bn3 = tf.contrib.layers.batch_norm(inputs=encoder_fc3, decay=0.9, center=True, scale=True,
-                                               is_training=phase)
-    encoder_fc4 = tf.contrib.layers.fully_connected(inputs=encoder_bn3, num_outputs=int(input_dim / 32),
-                                                    normalizer_fn=tf.nn.relu,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-    encoder_bn4 = tf.contrib.layers.batch_norm(inputs=encoder_fc4, decay=0.9, center=True, scale=True,
-                                               is_training=phase)
-    encoder = tf.contrib.layers.fully_connected(inputs=encoder_bn4, num_outputs=int(input_dim / 64),
-                                                normalizer_fn=tf.nn.relu,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-
-    ypred = tf.contrib.layers.fully_connected(inputs=encoder, num_outputs=1, normalizer_fn=None,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-    pred_loss = 0.5 * tf.reduce_mean(tf.multiply(tf.suqare(ypred - label), weight))
-
-    decoder_fc1 = tf.contrib.layers.fully_connected(inputs=encoder, num_outputs=int(input_dim / 32),
-                                                    normalizer_fn=tf.nn.relu,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-    decoder_bn1 = tf.contrib.layers.batch_norm(inputs=decoder_fc1, decay=0.9, center=True, scale=True,
-                                               is_training=phase)
-    decoder_fc2 = tf.contrib.layers.fully_connected(inputs=decoder_bn1, num_outputs=int(input_dim / 16),
-                                                    normalizer_fn=tf.nn.relu,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-    decoder_bn2 = tf.contrib.layers.batch_norm(inputs=decoder_fc2, decay=0.9, center=True, scale=True,
-                                               is_training=phase)
-    decoder_fc3 = tf.contrib.layers.fully_connected(inputs=decoder_bn2, num_outputs=int(1.3 * input_dim),
-                                                    normalizer_fn=tf.nn.relu,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-    decoder_bn3 = tf.contrib.layers.batch_norm(inputs=decoder_fc3, decay=0.9, center=True, scale=True,
-                                               is_training=phase)
-    decoder = tf.contrib.layers.fully_connected(inputs=decoder_bn3, num_outputs=input_dim,
-                                                normalizer_fn=tf.nn.relu,
-                                                    weights_initializer=tf.contrib.layers.xavier_initializer(uniform=False),
-                                                    biases_initializer=tf.contrib.layers.xavier_initializer(uniform=False))
-
-    rec_loss = 0.5 * tf.reduce_mean(tf.reduce_sum(tf.square(decoder - data), axis = 1))
-    loss = pred_loss_weight * pred_loss + rec_loss_weight * rec_loss
-
-    return data, label, weight, phase, pred_loss, rec_loss, loss, ypred, encoder, decoder
-
 def fully_connected(data, num_outputs, weights_initializer, biases_initializer, layer_id=0, no_act=False, ifold=0):
     shape = data.shape
     weights = tf.get_variable("weight_%d_%d" % (ifold, layer_id), [shape[1], num_outputs],
@@ -139,7 +72,7 @@ def fully_connected(data, num_outputs, weights_initializer, biases_initializer, 
         return fc
 
 
-def ae_model1(input_dim, pred_loss_weight=0.9, rec_loss_weight=0.1, ifold = 0):
+def ae_model(input_dim, pred_loss_weight=0.9, rec_loss_weight=0.1, ifold = 0):
     data = tf.placeholder(tf.float32, [None, input_dim])
     label = tf.placeholder(tf.float32, [None, 1])
     weight = tf.placeholder(tf.float32, [None, 1])
@@ -218,7 +151,7 @@ ypred_syms = []
 learning_rate = 0.002
 for i in range(nfolds):
     with tf.device('/cpu:0'):
-        data, label, weight, phase, pred_loss, rec_loss, loss, ypred, encoder, decoder = ae_model1(num_features, ifold = i)
+        data, label, weight, phase, pred_loss, rec_loss, loss, ypred, encoder, decoder = ae_model(num_features, ifold = i)
         data_syms.append(data)
         label_syms.append(label)
         weight_syms.append(weight)
